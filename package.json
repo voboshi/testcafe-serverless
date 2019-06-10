@@ -1,0 +1,36 @@
+{
+  "name": "testcafe-serverless",
+  "private": true,
+  "version": "0.0.2",
+  "license": "MIT",
+  "engines": {
+    "node": ">=8.10"
+  },
+  "author": "reimagined team",
+  "scripts": {
+    "prettier": "prettier-eslint --write \"./**/*.{js,json}\"",
+    "lint": "eslint .",
+    "testcafe-serverless-cli": "testcafe-serverless-cli",
+    "prepare": "npx oao all \"npx rimraf lib\" && oao run-script prepare && build-lambdas",
+    "clean": "npx oao all \"npx rimraf lib node_modules\""
+  },
+  "devDependencies": {
+    "eslint": "5.16.0",
+    "prettier-eslint-cli": "4.7.1",
+    "babel-eslint": "10.0.1",
+    "@babel/core": "7.4.5",
+    "@babel/preset-env": "7.4.5",
+    "oao": "1.6.0"
+  },
+  "workspaces": {
+    "packages": [
+      "testcafe-serverless-cli",
+      "lambdas/*",
+      "scripts/*"
+    ],
+    "nohoist": [
+      "**",
+      "**/**"
+    ]
+  }
+}
