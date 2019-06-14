@@ -28,8 +28,7 @@ const handler = async (event, context) => {
   console.log('Worker launched', JSON.stringify(event))
 
   let testcafe = null,
-    browser = null,
-    result = null
+    browser = null
   try {
     rimraf(path.join('/tmp/*'))
     const testcafeAppArchivePath = await downloadFromS3({
@@ -95,13 +94,16 @@ const handler = async (event, context) => {
         stopOnFirstFail
       })
 
-    result = JSON.parse(resultBuffer.toString('utf8'))
+    const result = JSON.parse(resultBuffer.toString('utf8'))
 
     console.log('Failed functional tests for', failedCount)
+    console.log(JSON.stringify(result, null, 2))
+
+    return result
   } catch (error) {
     console.error('Unhandled exception ', error)
 
-    return new Error(error)
+    throw new Error(error)
   } finally {
     if (testcafe != null) {
       await testcafe.close()
@@ -113,10 +115,6 @@ const handler = async (event, context) => {
 
     rimraf(path.join('/tmp/*'))
   }
-
-  console.log(JSON.stringify(result, null, 2))
-
-  return result
 }
 
 export { handler }
