@@ -1,9 +1,15 @@
+import AWS from 'aws-sdk'
 import invokeLambda from './invoke-lambda'
 
 const testcafeWorkerName = 'testcafe-worker-lambda'
 
 const handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false
+
+  AWS.config.update({
+    httpOptions: { timeout: 300000 }
+  })
+
   const {
     fileKey: outputFileKey,
     concurrency,

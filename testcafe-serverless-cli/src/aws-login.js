@@ -9,7 +9,8 @@ const awsLogin = async ({ accessKeyId, secretAccessKey }) => {
     credentials: {
       accessKeyId,
       secretAccessKey
-    }
+    },
+    httpOptions: { timeout: 300000 }
   })
 
   const iam = new AWS.IAM()
