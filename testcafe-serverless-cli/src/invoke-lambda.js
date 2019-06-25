@@ -1,24 +1,48 @@
 import Lambda from 'aws-sdk/clients/lambda'
 
-import retry from './retry'
+import { temporaryErrors } from './constants'
 
-const invokeLambda = async ({ region, lambdaArn, payload }) => {
+const invokeLambda = async ({
+  region,
+  lambdaArn,
+  payload,
+  invocationType = 'RequestResponse'
+}) => {
   const lambda = new Lambda({ region })
 
-  const { Payload, FunctionError } = await lambda
-    .invoke({
-      InvocationType: 'RequestResponse',
-      FunctionName: lambdaArn,
-      Payload: JSON.stringify(payload)
-    })
-    .promise()
+  console.log(`invoke lambda "${lambdaArn}" started`)
+  try {
+    while (true) {
+      try {
+        const lambdaResult = await lambda
+          .invoke({
+            InvocationType: invocationType,
+            FunctionName: lambdaArn,
+            Payload: JSON.stringify(payload)
+          })
+          .promise()
 
-  if (FunctionError != null) {
-    const error = JSON.parse(Payload.toString())
-    return ['error', error]
+        if (invocationType === 'RequestResponse') {
+          if (lambdaResult.FunctionError != null) {
+            const error = JSON.parse(lambdaResult.Payload.toString())
+            throw error
+          }
+
+          console.log(`invoke lambda "${lambdaArn}" succeeded`)
+          return JSON.parse(lambdaResult.Payload.toString())
+        } else {
+          return null
+        }
+      } catch (error) {
+        if (temporaryErrors.includes(error.code)) {
+          continue
+        }
+        throw error
+      }
+    }
+  } catch (e) {
+    console.log(`invoke lambda "${lambdaArn}" failed`)
   }
-
-  return ['ok', JSON.parse(Payload.toString())]
 }
 
-export default retry(invokeLambda, { count: 10, delay: 1000 })
+export default invokeLambda

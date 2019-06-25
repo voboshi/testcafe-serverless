@@ -8,10 +8,16 @@ import fs from 'fs'
 import downloadFromS3 from './download-from-s3'
 import unarchiveDir from './unarchive-dir'
 
-const bucketName = 'testcafe-serverless-bucket'
+import { bucketName, testcafeTableName, heartBeatInterval } from './constants'
+import writeDynamoTable from './write-dynamo-table'
+
+let heartBeat
 
 const handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false
+
+  clearInterval(heartBeat)
+
   const {
     fileKey,
     region,
@@ -22,8 +28,24 @@ const handler = async (event, context) => {
     assertionTimeout,
     pageLoadTimeout,
     speed,
-    stopOnFirstFail
+    stopOnFirstFail,
+    launchId,
+    workerIndex
   } = event
+
+  heartBeat = setInterval(
+    async () =>
+      await writeDynamoTable({
+        tableName: testcafeTableName,
+        region,
+        launchId,
+        workerIndex,
+        data: {
+          lastActiveTimestamp: Date.now()
+        }
+      }),
+    heartBeatInterval
+  )
 
   console.log('Worker launched', JSON.stringify(event))
 
@@ -96,25 +118,50 @@ const handler = async (event, context) => {
 
     const result = JSON.parse(resultBuffer.toString('utf8'))
 
-    console.log('Failed functional tests for', failedCount)
-    console.log(JSON.stringify(result, null, 2))
+    await writeDynamoTable({
+      tableName: testcafeTableName,
+      region,
+      launchId,
+      workerIndex,
+      data: {
+        report: result
+      }
+    })
 
-    return result
+    if (failedCount > 0) {
+      console.error(`Failed ${failedCount} functional tests`)
+    }
+
+    console.log(JSON.stringify(result, null, 2))
   } catch (error) {
     console.error('Unhandled exception ', error)
 
-    throw new Error(error)
-  } finally {
-    if (testcafe != null) {
-      await testcafe.close()
-    }
-
-    if (browser != null) {
-      await browser.close()
-    }
-
-    rimraf(path.join('/tmp/*'))
+    await writeDynamoTable({
+      tableName: testcafeTableName,
+      region,
+      launchId,
+      workerIndex,
+      data: {
+        error: {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        }
+      }
+    })
   }
+
+  clearInterval(heartBeat)
+
+  if (testcafe != null) {
+    await testcafe.close()
+  }
+
+  if (browser != null) {
+    await browser.close()
+  }
+
+  rimraf(path.join('/tmp/*'))
 }
 
 export { handler }

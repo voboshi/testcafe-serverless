@@ -4,11 +4,15 @@ import fs from 'fs'
 import uploadToS3 from './upload-to-s3'
 import archiveDir from './archive-dir'
 import invokeLambda from './invoke-lambda'
+import readDynamoTable from './read-dynamo-table'
 
-const bucketName = 'testcafe-serverless-bucket'
-
-const testcafeLauncherName = 'testcafe-launcher-lambda'
-const testcafeBuilderName = 'testcafe-builder-lambda'
+import {
+  bucketName,
+  testcafeWorkerName,
+  testcafeBuilderName,
+  testcafeTableName
+} from './constants'
+import setFunctionConcurrency from './set-function-concurrency'
 
 const run = async ({
   region,
@@ -48,16 +52,17 @@ const run = async ({
 
   console.log('Installing started')
 
-  const [builtStatus, builtResult] = await invokeLambda({
-    region,
-    lambdaArn: `arn:aws:lambda:${region}:${accountId}:function:${testcafeBuilderName}`,
-    payload: {
-      fileKey: testcafeArchiveKey,
-      region
-    }
-  })
-
-  if (builtStatus !== 'ok') {
+  let builtResult = null
+  try {
+    builtResult = await invokeLambda({
+      region,
+      lambdaArn: `arn:aws:lambda:${region}:${accountId}:function:${testcafeBuilderName}`,
+      payload: {
+        fileKey: testcafeArchiveKey,
+        region
+      }
+    })
+  } catch (error) {
     throw new Error(
       `Build testcafe app failed: ${JSON.stringify(builtResult, null, 2)}`
     )
@@ -73,34 +78,95 @@ const run = async ({
 
   console.log('Testcafe started')
 
-  const [testcafeStatus, testcafeResult] = await invokeLambda({
-    region,
-    lambdaArn: `arn:aws:lambda:${region}:${accountId}:function:${testcafeLauncherName}`,
-    payload: {
-      fileKey: builtFileKey,
-      concurrency,
+  const workerLambdaArn = `arn:aws:lambda:${region}:${accountId}:function:${testcafeWorkerName}`
+
+  const launchId = `testcafe-execution-${Date.now()}-${Math.floor(
+    Math.random() * 1000000000000
+  )}`
+
+  process.on(
+    'SIGINT',
+    setFunctionConcurrency.bind(null, {
       region,
-      accountId,
-      testPattern,
-      skipJsErrors,
-      skipUncaughtErrors,
-      selectorTimeout,
-      assertionTimeout,
-      pageLoadTimeout,
-      speed,
-      stopOnFirstFail
-    }
+      functionName: testcafeWorkerName,
+      concurrency: 0
+    })
+  )
+
+  await setFunctionConcurrency({
+    region,
+    functionName: testcafeWorkerName,
+    concurrency
   })
 
-  if (testcafeStatus !== 'ok') {
-    throw new Error(
-      `Run testcafe app failed: ${JSON.stringify(testcafeResult, null, 2)}`
+  const invocationPromises = []
+  for (let workerIndex = 0; workerIndex < concurrency; workerIndex++) {
+    invocationPromises.push(
+      invokeLambda({
+        region,
+        lambdaArn: workerLambdaArn,
+        payload: {
+          fileKey: builtFileKey,
+          launchId,
+          workerIndex,
+          region,
+          testPattern,
+          skipJsErrors,
+          skipUncaughtErrors,
+          selectorTimeout,
+          assertionTimeout,
+          pageLoadTimeout,
+          speed,
+          stopOnFirstFail
+        },
+        invocationType: 'Event'
+      })
     )
   }
 
-  console.log('Testcafe succeeded')
+  await Promise.all(invocationPromises)
 
-  console.log(JSON.stringify(testcafeResult, null, 2))
+  while (true) {
+    const items = await readDynamoTable({
+      region,
+      launchId,
+      tableName: testcafeTableName
+    })
+
+    const doneWorkers = new Set(
+      items
+        .filter(({ report, error }) => report != null || error != null)
+        .map(({ workerIndex }) => workerIndex)
+    ).size
+
+    if (doneWorkers !== concurrency) {
+      console.log(
+        `Ready ${doneWorkers} workers from ${concurrency}, waiting...`
+      )
+
+      await new Promise(resolve => setTimeout(resolve, 15000))
+
+      continue
+    }
+
+    for (const { workerIndex, report, error } of items) {
+      if (report != null) {
+        console.log(`=== WORKER ${workerIndex} REPORT ===`)
+        console.log(JSON.stringify(report, null, 2))
+      } else if (error != null) {
+        console.log(`=== WORKER ${workerIndex} ERROR ===`)
+        console.log(JSON.stringify(error, null, 2))
+      }
+    }
+
+    break
+  }
+
+  await setFunctionConcurrency({
+    region,
+    functionName: testcafeWorkerName,
+    concurrency: 0
+  })
 }
 
 export default run

@@ -5,18 +5,15 @@ import uploadToS3 from './upload-to-s3'
 import createLambda from './create-lambda'
 import dropOnS3 from './drop-on-s3'
 
-const bucketName = 'testcafe-serverless-bucket'
+import {
+  bucketName,
+  testcafeWorkerName,
+  testcafeBuilderName,
+  testcafeTableName
+} from './constants'
+import checkDynamoTableExists from './check-dynamo-table-exists'
+import createDynamoTable from './create-dynamo-table'
 
-const testcafeLauncherName = 'testcafe-launcher-lambda'
-const testcafeWorkerName = 'testcafe-worker-lambda'
-const testcafeBuilderName = 'testcafe-builder-lambda'
-
-const testcafeLauncherFile = path.join(
-  __dirname,
-  '..',
-  'lambdas',
-  'testcafe-launcher-lambda.zip'
-)
 const testcafeWorkerFile = path.join(
   __dirname,
   '..',
@@ -30,16 +27,16 @@ const testcafeBuilderFile = path.join(
   'testcafe-builder-lambda.zip'
 )
 
-const getPolicyContent = ({ region, accountId, lambdaName }) => [
-  {
-    Effect: 'Allow',
-    Action: ['lambda:InvokeFunction', 'lambda:InvokeAsync'],
-    Resource: `arn:aws:lambda:${region}:${accountId}:function:${testcafeWorkerName}`
-  },
+const getPolicyContent = ({ region, accountId, lambdaName, tableName }) => [
   {
     Effect: 'Allow',
     Action: ['s3:*'],
     Resource: `arn:aws:s3:::${bucketName}/*`
+  },
+  {
+    Action: ['dynamodb:Query', 'dynamodb:UpdateItem'],
+    Resource: `arn:aws:dynamodb:${region}:${accountId}:table/${tableName}`,
+    Effect: 'Allow'
   },
   {
     Effect: 'Allow',
@@ -59,13 +56,9 @@ const getPolicyContent = ({ region, accountId, lambdaName }) => [
 const init = async ({ region, accountId }) => {
   await createS3Bucket({ region, bucketName })
 
+  await createDynamoTable({ region, tableName: testcafeTableName })
+
   await Promise.all([
-    uploadToS3({
-      file: testcafeLauncherFile,
-      region,
-      bucketName,
-      fileKey: testcafeLauncherName
-    }),
     uploadToS3({
       file: testcafeWorkerFile,
       region,
@@ -82,18 +75,6 @@ const init = async ({ region, accountId }) => {
 
   await Promise.all([
     createLambda({
-      functionName: testcafeLauncherName,
-      bucketName,
-      fileKey: testcafeLauncherName,
-      region,
-      policyContent: getPolicyContent({
-        region,
-        accountId,
-        lambdaName: testcafeLauncherName
-      }),
-      memorySize: 128
-    }),
-    createLambda({
       functionName: testcafeWorkerName,
       bucketName,
       fileKey: testcafeWorkerName,
@@ -101,7 +82,8 @@ const init = async ({ region, accountId }) => {
       policyContent: getPolicyContent({
         region,
         accountId,
-        lambdaName: testcafeWorkerName
+        lambdaName: testcafeWorkerName,
+        tableName: testcafeTableName
       }),
       memorySize: 1600
     }),
@@ -113,18 +95,14 @@ const init = async ({ region, accountId }) => {
       policyContent: getPolicyContent({
         region,
         accountId,
-        lambdaName: testcafeBuilderName
+        lambdaName: testcafeBuilderName,
+        tableName: testcafeTableName
       }),
       memorySize: 1600
     })
   ])
 
   await Promise.all([
-    dropOnS3({
-      region,
-      bucketName,
-      fileKey: testcafeLauncherName
-    }),
     dropOnS3({
       region,
       bucketName,
@@ -136,6 +114,10 @@ const init = async ({ region, accountId }) => {
       fileKey: testcafeBuilderName
     })
   ])
+
+  while (
+    !(await checkDynamoTableExists({ region, tableName: testcafeTableName }))
+  ) {}
 }
 
 export default init
