@@ -11,6 +11,8 @@ const createRole = async ({
 }) => {
   const iam = new IAM({ region })
 
+  let isRoleCreated = false
+
   console.log(`create role "${roleName}" started`)
   while (true) {
     try {
@@ -20,7 +22,6 @@ const createRole = async ({
           {
             Effect: 'Allow',
             Principal: {
-              AWS: '*',
               Service: roleService
             },
             Action: 'sts:AssumeRole'
@@ -29,10 +30,14 @@ const createRole = async ({
       }
 
       try {
-        await iam.updateAssumeRolePolicy({
-          RoleName: roleName,
-          PolicyDocument: JSON.stringify(assumeRolePolicyDocument)
-        })
+        await iam
+          .updateAssumeRolePolicy({
+            RoleName: roleName,
+            PolicyDocument: JSON.stringify(assumeRolePolicyDocument)
+          })
+          .promise()
+
+        isRoleCreated = true
       } catch (error) {
         if (error.code !== 'NoSuchEntity') {
           console.error(
@@ -49,6 +54,8 @@ const createRole = async ({
             AssumeRolePolicyDocument: JSON.stringify(assumeRolePolicyDocument)
           })
           .promise()
+
+        isRoleCreated = true
       } catch (error) {
         if (error.code !== 'EntityAlreadyExists') {
           console.error(`create role "${roleName}" failed on iam.createRole`)
@@ -77,18 +84,6 @@ const createRole = async ({
       }
 
       console.log(`put role policy "${roleName}" / "${policyName}" succeeded`)
-
-      try {
-        const { Role } = await iam
-          .getRole({
-            RoleName: roleName
-          })
-          .promise()
-        return Role.Arn
-      } catch (error) {
-        console.error(`get role "${roleName}" failed`)
-        throw error
-      }
     } catch (error) {
       if (temporaryErrors.includes(error.code)) {
         continue
@@ -96,6 +91,25 @@ const createRole = async ({
 
       throw error
     }
+
+    break
+  }
+
+  if (!isRoleCreated) {
+    console.error(`create role "${roleName}" failed`)
+    throw new Error(`create role "${roleName}" failed`)
+  }
+
+  while (true) {
+    try {
+      const { Role } = await iam
+        .getRole({
+          RoleName: roleName
+        })
+        .promise()
+
+      return Role.Arn
+    } catch (error) {}
   }
 }
 

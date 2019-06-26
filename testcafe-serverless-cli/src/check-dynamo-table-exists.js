@@ -1,9 +1,13 @@
 import DynamoDB from 'aws-sdk/clients/dynamodb'
 
-const checkDynamoTableExists = async ({ region, tableName }) => {
+const checkDynamoTableExists = async ({ region, tableName }, level = 0) => {
   const database = new DynamoDB({ region })
 
-  console.log(`check dynamo table exists "${tableName}" started`)
+  if (level === 0) {
+    console.log(`check dynamo table exists "${tableName}" started`)
+  } else if (level % 20 === 0) {
+    console.log(`check dynamo table exists "${tableName}" still in progress`)
+  }
 
   try {
     const tableInfo = await database
@@ -17,7 +21,7 @@ const checkDynamoTableExists = async ({ region, tableName }) => {
       return true
     }
 
-    return await checkDynamoTableExists({ region, tableName })
+    return await checkDynamoTableExists({ region, tableName }, level + 1)
   } catch (error) {}
 
   console.log(`check dynamo table exists "${tableName}" done with false`)

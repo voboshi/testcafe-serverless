@@ -19,7 +19,7 @@ const createFunction = async ({
       const roleArn = await createRole({
         region,
         roleName: `${functionName}-role`,
-        roleService: 'lambda.amazonaws.com',
+        roleService: ['lambda.amazonaws.com'],
         policyName: `${functionName}-policy`,
         policyContent
       })
