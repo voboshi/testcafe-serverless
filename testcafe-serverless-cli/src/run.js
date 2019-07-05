@@ -10,7 +10,8 @@ import {
   bucketName,
   testcafeWorkerName,
   testcafeBuilderName,
-  testcafeTableName
+  testcafeTableName,
+  lambdaExpirationTimeout
 } from './constants'
 import setFunctionConcurrency from './set-function-concurrency'
 
@@ -84,14 +85,14 @@ const run = async ({
     Math.random() * 1000000000000
   )}`
 
-  process.on(
-    'SIGINT',
-    setFunctionConcurrency.bind(null, {
+  process.on('SIGINT', async () => {
+    await setFunctionConcurrency({
       region,
       functionName: testcafeWorkerName,
       concurrency: 0
     })
-  )
+    process.exit(0)
+  })
 
   await setFunctionConcurrency({
     region,
@@ -133,9 +134,16 @@ const run = async ({
       tableName: testcafeTableName
     })
 
+    const maxAllowedTimestamp = Date.now() - lambdaExpirationTimeout
+
     const doneWorkers = new Set(
       items
-        .filter(({ report, error }) => report != null || error != null)
+        .filter(
+          ({ report, error, lastActiveTimestamp }) =>
+            report != null ||
+            error != null ||
+            lastActiveTimestamp < maxAllowedTimestamp
+        )
         .map(({ workerIndex }) => workerIndex)
     ).size
 
@@ -149,13 +157,15 @@ const run = async ({
       continue
     }
 
-    for (const { workerIndex, report, error } of items) {
+    for (const { workerIndex, report, error, lastActiveTimestamp } of items) {
       if (report != null) {
         console.log(`=== WORKER ${workerIndex} REPORT ===`)
         console.log(JSON.stringify(report, null, 2))
       } else if (error != null) {
         console.log(`=== WORKER ${workerIndex} ERROR ===`)
         console.log(JSON.stringify(error, null, 2))
+      } else if (lastActiveTimestamp < maxAllowedTimestamp) {
+        console.log(`=== WORKER ${workerIndex} IS TIMING OUT ===`)
       }
     }
 

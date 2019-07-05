@@ -118,18 +118,31 @@ const handler = async (event, context) => {
 
     const result = JSON.parse(resultBuffer.toString('utf8'))
 
-    await writeDynamoTable({
-      tableName: testcafeTableName,
-      region,
-      launchId,
-      workerIndex,
-      data: {
-        report: result
-      }
-    })
-
     if (failedCount > 0) {
       console.error(`Failed ${failedCount} functional tests`)
+
+      await writeDynamoTable({
+        tableName: testcafeTableName,
+        region,
+        launchId,
+        workerIndex,
+        data: {
+          report: result,
+          error: {
+            message: `Failed ${failedCount} functional tests`
+          }
+        }
+      })
+    } else {
+      await writeDynamoTable({
+        tableName: testcafeTableName,
+        region,
+        launchId,
+        workerIndex,
+        data: {
+          report: result
+        }
+      })
     }
 
     console.log(JSON.stringify(result, null, 2))
