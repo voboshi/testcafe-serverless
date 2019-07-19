@@ -14,6 +14,7 @@ import {
   lambdaExpirationTimeout
 } from './constants'
 import setFunctionConcurrency from './set-function-concurrency'
+import deleteFunctionConcurrency from './delete-function-concurrency'
 
 const run = async ({
   region,
@@ -97,7 +98,12 @@ const run = async ({
   await setFunctionConcurrency({
     region,
     functionName: testcafeWorkerName,
-    concurrency
+    concurrency: 0
+  })
+
+  await deleteFunctionConcurrency({
+    region,
+    functionName: testcafeWorkerName
   })
 
   const invocationPromises = []

@@ -1,6 +1,6 @@
 {
   "name": "testcafe-serverless-cli",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "bin": "./bin/index.js",
   "main": "./lib/index.js",
   "license": "MIT",
