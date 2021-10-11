@@ -15,12 +15,12 @@
     "clean": "npx oao all \"npx rimraf lib node_modules\""
   },
   "devDependencies": {
-    "eslint": "5.16.0",
-    "prettier-eslint-cli": "4.7.1",
-    "babel-eslint": "10.0.1",
-    "@babel/core": "7.4.5",
-    "@babel/preset-env": "7.4.5",
-    "oao": "1.6.0"
+    "@babel/core": "7.15.8",
+    "@babel/eslint-parser": "7.15.8",
+    "@babel/preset-env": "7.15.8",
+    "eslint": "8.0.0",
+    "oao": "1.10.0",
+    "prettier-eslint-cli": "5.0.1"
   },
   "workspaces": {
     "packages": [
