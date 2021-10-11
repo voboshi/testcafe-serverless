@@ -12,7 +12,7 @@ const main = async () => {
     const {
       accessKeyId,
       secretAccessKey,
-      region = 'us-east-1',
+      region = 'eu-west-1',
       testcafeDir,
       concurrency,
       testPattern = '**/*.test.js',

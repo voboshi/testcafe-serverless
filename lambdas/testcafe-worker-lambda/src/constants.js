@@ -5,10 +5,10 @@ export const temporaryErrors = [
   'ThrottlingException'
 ]
 
-export const bucketName = 'testcafe-serverless-bucket'
+export const bucketName = 'serverless-browser-tests-bucket'
 
-export const testcafeWorkerName = 'testcafe-worker-lambda'
-export const testcafeBuilderName = 'testcafe-builder-lambda'
-export const testcafeTableName = 'testcafe-dynamo-table'
+export const testcafeWorkerName = 'serverless-browser-tests-worker'
+export const testcafeBuilderName = 'serverless-browser-tests-builder'
+export const testcafeTableName = 'serverless-browser-tests-testcafe'
 
 export const heartBeatInterval = 15000

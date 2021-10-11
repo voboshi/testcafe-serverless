@@ -30,7 +30,7 @@ const createFunction = async ({
             FunctionName: functionName,
             Handler: 'index.handler',
             Role: roleArn,
-            Runtime: 'nodejs8.10',
+            Runtime: 'nodejs12.x',
             Timeout: 60 * 15,
             MemorySize: memorySize
           })
@@ -68,7 +68,7 @@ const createFunction = async ({
             FunctionName: functionName,
             Handler: 'index.handler',
             Role: roleArn,
-            Runtime: 'nodejs8.10',
+            Runtime: 'nodejs12.x',
             Code: {
               S3Bucket: bucketName,
               S3Key: fileKey

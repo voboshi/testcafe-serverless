@@ -1,24 +1,26 @@
 import AWS from 'aws-sdk'
 
-const awsLogin = async ({ accessKeyId, secretAccessKey }) => {
-  if (accessKeyId == null || secretAccessKey == null) {
-    throw new Error(`Parameters "accessKeyId" and "secretAccessKey" required`)
-  }
-
-  AWS.config.update({
-    credentials: {
-      accessKeyId,
-      secretAccessKey
-    },
-    httpOptions: { timeout: 300000 }
+const awsLogin = async () => {
+  var accountId
+  var credentials = new AWS.SharedIniFileCredentials({
+    profile: process.env.AWS_PROFILE,
   })
 
-  const iam = new AWS.IAM()
+  AWS.config.credentials = credentials
 
-  const accountId = await iam
-    .getUser({})
-    .promise()
-    .then(({ User: { Arn } }) => Arn.split(':')[4])
+  AWS.config.update({
+    httpOptions: { timeout: 300000 },
+  })
+
+  var sts = new AWS.STS()
+
+  sts.getCallerIdentity({}, function (err, data) {
+    if (err) {
+      console.log('Error getting caller identity from STS: ', err)
+    } else {
+      accountId = JSON.stringify(data.Account)
+    }
+  })
 
   return accountId
 }

@@ -10,7 +10,7 @@ const createS3Bucket = async ({ region, bucketName }) => {
       return await s3
         .createBucket({
           Bucket: bucketName,
-          ACL: 'public-read'
+          ACL: 'private'
         })
         .promise()
     } catch (error) {
