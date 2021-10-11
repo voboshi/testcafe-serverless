@@ -1,13 +1,13 @@
 {
-  "name": "testcafe-serverless-cli",
-  "version": "0.0.6",
+  "name": "cli",
+  "version": "1.0.0",
   "bin": "./bin/index.js",
   "main": "./lib/index.js",
   "license": "MIT",
   "engines": {
     "node": ">=8.10"
   },
-  "author": "reimagined team",
+  "author": "reimagined team, Dunelm",
   "scripts": {
     "prepare": "babel --config-file=../babel.config.json --source-maps --out-dir lib src"
   },

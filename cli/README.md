@@ -1,4 +1,4 @@
-# testcafe-serverless-cli
+# serverless-browser-tests-cli
 
 Deploy lambdas and resources:
 ```sh
