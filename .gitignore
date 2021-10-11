@@ -65,5 +65,4 @@ temp
 .vscode
 vscode
 lib/
-testcafe-serverless-cli/lambdas/
-
+cli/lambdas/

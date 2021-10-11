@@ -1,12 +1,12 @@
 {
-  "name": "build-lambdas",
+  "name": "serverless-browser-tests-build-lambdas",
   "private": true,
-  "version": "0.0.6",
+  "version": "1.0.0",
   "bin": "./bin/index.js",
   "engines": {
     "node": ">=8.10"
   },
-  "author": "reimagined team",
+  "author": "reimagined team, Dunelm",
   "scripts": {
     "prepare": "babel --config-file=../../babel.config.json --source-maps --out-dir lib src"
   },

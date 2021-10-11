@@ -1,5 +1,7 @@
-# testcafe-serverless
+# serverless-browser-tests
 
-Serverless testcafe launcher.
+Launch browser tests in Serverless environments (AWS Lambda).
 
-See documentation in ["testcafe-serverless-cli" package](./testcafe-serverless-cli).
+Compatible with:
+
+- TestCafe
